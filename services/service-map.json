@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "publicEntryPoint": "http://127.0.0.1:3001/api/v1",
+  "services": [
+    {
+      "id": "api-gateway",
+      "port": 3001,
+      "status": "extracted",
+      "owns": [
+        "public HTTP routing",
+        "session enforcement",
+        "correlation ids",
+        "aggregate readiness"
+      ]
+    },
+    {
+      "id": "identity-service",
+      "port": 3101,
+      "status": "extracted",
+      "database": "data/services/identity.db",
+      "owns": ["users", "sessions"]
+    },
+    {
+      "id": "investment-core",
+      "port": 3100,
+      "status": "compatibility-boundary",
+      "database": "data/services/investment-core.db",
+      "access": "gateway-only",
+      "owns": ["accounts", "instruments", "ledger", "portfolio read model"]
+    },
+    {
+      "id": "market-data-service",
+      "status": "route-slot-ready",
+      "owns": ["prices", "fx rates", "collectors", "sync runs"]
+    },
+    {
+      "id": "planning-service",
+      "status": "route-slot-ready",
+      "owns": ["policy", "targets", "decisions", "reviews"]
+    },
+    {
+      "id": "audit-service",
+      "status": "route-slot-ready",
+      "owns": ["audit projections", "export packages", "reconciliations"]
+    }
+  ]
+}

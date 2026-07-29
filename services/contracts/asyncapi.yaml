@@ -1,0 +1,103 @@
+asyncapi: 3.0.0
+info:
+  title: SANYU INVEST Domain Events
+  version: 1.0.0
+  description: Versioned contracts used when domain services are extracted from the compatibility core.
+defaultContentType: application/json
+channels:
+  identity.user:
+    address: identity.user.v1
+    messages:
+      userCreated:
+        $ref: '#/components/messages/UserCreated'
+  ledger.transaction:
+    address: ledger.transaction.v1
+    messages:
+      transactionRecorded:
+        $ref: '#/components/messages/TransactionRecorded'
+  catalog.instrument:
+    address: catalog.instrument.v1
+    messages:
+      instrumentChanged:
+        $ref: '#/components/messages/InstrumentChanged'
+  market.price:
+    address: market.price.v1
+    messages:
+      priceUpdated:
+        $ref: '#/components/messages/PriceUpdated'
+  planning.policy:
+    address: planning.policy.v1
+    messages:
+      policyUpdated:
+        $ref: '#/components/messages/PolicyUpdated'
+components:
+  schemas:
+    envelope:
+      type: object
+      required:
+        - event_id
+        - event_type
+        - event_version
+        - aggregate_type
+        - aggregate_id
+        - occurred_at
+        - correlation_id
+        - payload
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        event_version:
+          type: integer
+          minimum: 1
+        aggregate_type:
+          type: string
+        aggregate_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        correlation_id:
+          type: string
+          format: uuid
+        causation_id:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        actor:
+          type:
+            - object
+            - 'null'
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            display_name:
+              type: string
+        payload:
+          type: object
+  messages:
+    UserCreated:
+      name: identity.user.created
+      payload:
+        $ref: '#/components/schemas/envelope'
+    TransactionRecorded:
+      name: ledger.transaction.recorded
+      payload:
+        $ref: '#/components/schemas/envelope'
+    InstrumentChanged:
+      name: catalog.instrument.changed
+      payload:
+        $ref: '#/components/schemas/envelope'
+    PriceUpdated:
+      name: market.price.updated
+      payload:
+        $ref: '#/components/schemas/envelope'
+    PolicyUpdated:
+      name: planning.policy.updated
+      payload:
+        $ref: '#/components/schemas/envelope'
