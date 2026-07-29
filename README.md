@@ -92,6 +92,12 @@ npm run build
 
 TWR、回撤和波动率需要连续历史价格与估值覆盖；数据不足时系统明确显示“数据不足”，不会生成模拟指标。
 
+## Docker 部署
+
+生产环境推荐使用单机 Docker Compose，通过 Caddy 统一提供 HTTPS，并把
+SQLite 数据保存到独立 volume。完整步骤见
+[Docker 生产部署说明](deploy/README.md)。
+
 ## 数据与安全
 
 - `.env`、SQLite 数据库、凭据密钥、日志、备份与运行时文件均被 Git 忽略；

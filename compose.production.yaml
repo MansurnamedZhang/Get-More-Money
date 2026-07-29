@@ -1,0 +1,148 @@
+name: sanyu-invest
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    init: true
+    depends_on:
+      frontend:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in deploy/.env}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: /api/v1
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: api-gateway
+    restart: unless-stopped
+    init: true
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      investment-core:
+        condition: service_healthy
+    environment:
+      GATEWAY_BIND: 0.0.0.0:3001
+      IDENTITY_SERVICE_URL: http://identity-service:3101
+      INVESTMENT_CORE_SERVICE_URL: http://investment-core:3100
+      MARKET_DATA_SERVICE_URL: http://investment-core:3100
+      PLANNING_SERVICE_URL: http://investment-core:3100
+      AUDIT_SERVICE_URL: http://investment-core:3100
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in deploy/.env}
+      RUST_LOG: ${RUST_LOG:-info,tower_http=info}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3001/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - edge
+      - application
+    security_opt:
+      - no-new-privileges:true
+
+  identity-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: identity-service
+    restart: unless-stopped
+    init: true
+    environment:
+      IDENTITY_BIND: 0.0.0.0:3101
+      IDENTITY_DATABASE_URL: sqlite:///data/identity.db
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in deploy/.env}
+      COOKIE_SECURE: "true"
+      RUST_LOG: ${RUST_LOG:-info,tower_http=info}
+    volumes:
+      - identity_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3101/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - application
+    security_opt:
+      - no-new-privileges:true
+
+  investment-core:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: investment-core
+    restart: unless-stopped
+    init: true
+    environment:
+      APP_BIND: 0.0.0.0:3100
+      DATABASE_URL: sqlite:///data/investment-core.db
+      AUTH_REQUIRED: "false"
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in deploy/.env}
+      SANYU_CREDENTIAL_MASTER_KEY: ${SANYU_CREDENTIAL_MASTER_KEY:?Set SANYU_CREDENTIAL_MASTER_KEY in deploy/.env}
+      RUST_LOG: ${RUST_LOG:-info,tower_http=info}
+    volumes:
+      - investment_core_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3100/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - application
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  edge:
+  application:
+
+volumes:
+  identity_data:
+    name: sanyu-invest-identity-data
+  investment_core_data:
+    name: sanyu-invest-core-data
+  caddy_data:
+    name: sanyu-invest-caddy-data
+  caddy_config:
+    name: sanyu-invest-caddy-config

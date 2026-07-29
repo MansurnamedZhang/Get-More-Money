@@ -46,3 +46,20 @@ jobs:
       - name: Run tests
         working-directory: frontend
         run: npm test
+
+  docker-deployment:
+    name: Docker deployment checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose file
+        run: docker compose --env-file deploy/.env.example -f compose.production.yaml config
+      - name: Validate Caddy configuration
+        run: >-
+          docker run --rm
+          -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          -e APP_DOMAIN=example.com
+          caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile
+      - name: Build production images
+        run: docker compose --env-file deploy/.env.example -f compose.production.yaml build
